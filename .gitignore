@@ -1,0 +1,8 @@
+./images/
+./dataset/test/
+./dataset/train/
+*.pth
+*.png
+*.jpeg
+*.jpg
+images.zip
