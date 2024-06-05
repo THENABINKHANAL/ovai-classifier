@@ -1,79 +1,84 @@
-"""
-Download datasets at https://huggingface.co/datasets/ovai-purdue/sea-creature-imgs/tree/main
-inaturalist-2k, wikimedia-2k, and yahoo-2k contain images for the ~2000 concepts from Fathomnet scraped from iNaturalist, Wikimedia, and Yahoo Images respectively
+import os
+import json
+import random
 
-Unzip the dataset into file structure:
-dataset/
-    train/
-        inaturalist/
-        wikimedia/
-        yahoo/
-
-- inaturalist contains more accurate photos, but doesn't cover all concepts from Fathomnet
-- wikimedia contains many images of text and diagrams instead of photos of the creature
-- yahoo contains images that are not of the creature, but it's ordered by relevance
-
-Set DATASETS to the list of datasets you want to use
-Run this script in the dataset/ directory to update label_counts.json, labels.json, train_labels.json
-"""
-
-#DATASETS = ['inaturalist', 'wikimedia', 'yahoo']
-DATASETS = ['inaturalist']
+DATASETS = ['inaturalist', 'wikimedia', 'yahoo']
 ID_START = 3000000
 EXCLUDED_LABELS = ['test']
 
-
-import os
-import json
-
-
-with open('label_templates/label_counts.json') as f:
+with open('./dataset/label_counts.json') as f:
     label_counts = json.load(f)
 
-with open('label_templates/labels.json') as f:
+with open('./dataset/labels.json') as f:
     labels = json.load(f)
 
-with open('label_templates/train_labels.json') as f:
+with open('./dataset/train_labels.json') as f:
     train_labels = json.load(f)
 
+with open('./dataset/test_labels.json') as f:
+    test_labels = json.load(f)
+
+def list_files_in_directory(directory):
+    try:
+        files_and_directories = os.listdir(directory)
+        files = [f for f in files_and_directories if os.path.isfile(os.path.join(directory, f))]
+        return files
+    except FileNotFoundError:
+        return "Directory not found."
+    except Exception as e:
+        return str(e)
 
 cur_id = ID_START
 for dataset in DATASETS:
-    basedir = os.path.join('train', dataset)
-    for label in os.listdir(basedir):
-        label = label.replace(' sp ', ' sp. ')
+    basedir = os.path.join('./dataset/train', dataset)
+    for dirLabel in os.listdir(basedir):
+        label = dirLabel.replace(' sp ', ' sp. ')
         if label.endswith(' sp'):
             label = label + '.'
-            
         if label in EXCLUDED_LABELS:
             continue
-            
-        key = label.upper()
-        if key not in labels:
+
+        label = label.upper()
+        if label not in label_counts:
+            print(label)
             continue
-        
-        imgs = os.listdir(os.path.join(basedir, label))
-        if key not in label_counts:
-            label_counts[key] = 0
-        label_counts[key] = label_counts[key] + len(imgs)
-        
-        for img in imgs:
+        files = list_files_in_directory("./dataset/train/" + dataset + '/' + dirLabel)
+        label_counts[label] = label_counts[label] + len(files)
+
+        random.shuffle(files)
+
+        split_index = int(len(files) * 0.8)
+        train_files = files[:split_index]
+        test_files = files[split_index:]
+
+        for file in train_files:
             train_labels.append(
                 {
                     "id": cur_id,
-                    "path": "./dataset/train/"+dataset+'/'+label+'/'+img,
-                    "label": label
+                    "path": "./dataset/train/" + dataset + '/' + dirLabel + '/' + file,
+                    "label": label.upper()
                 }
             )
-            cur_id = cur_id+1
-        
+            cur_id += 1
 
-with open("label_counts.json", "w") as outfile:
+        for file in test_files:
+            test_labels.append(
+                {
+                    "id": cur_id,
+                    "path": "./dataset/train/" + dataset + '/' + label + '/' + file,
+                    "label": label.upper()
+                }
+            )
+            cur_id += 1
+
+with open("./dataset/label_counts2.json", "w") as outfile:
     json.dump(label_counts, outfile, sort_keys=True, indent=4)
 
-with open("labels.json", "w") as outfile:
+with open("./dataset/labels2.json", "w") as outfile:
     json.dump(labels, outfile, sort_keys=True, indent=4)
 
-with open("train_labels.json", "w") as outfile:
+with open("./dataset/train_labels2.json", "w") as outfile:
     json.dump(train_labels, outfile, sort_keys=True, indent=4)
 
+with open("./dataset/test_labels2.json", "w") as outfile:
+    json.dump(test_labels, outfile, sort_keys=True, indent=4)
