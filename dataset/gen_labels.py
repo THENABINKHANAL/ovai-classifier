@@ -41,12 +41,16 @@ cur_id = ID_START
 for dataset in DATASETS:
     basedir = os.path.join('train', dataset)
     for label in os.listdir(basedir):
+        label = label.replace(' sp ', ' sp. ')
+        if label.endswith(' sp'):
+            label = label + '.'
+            
         if label in EXCLUDED_LABELS:
             continue
             
         key = label.upper()
         if key not in labels:
-            labels[key] = len(labels)
+            continue
         
         imgs = os.listdir(os.path.join(basedir, label))
         if key not in label_counts:
